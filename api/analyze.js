@@ -1,18 +1,26 @@
 // ClaimReady — analysis API. Sends the uploaded documents to Google Gemini (full
 // resolution, all pages) and returns structured claim-readiness findings as JSON.
+// Retries and falls back across Flash models when one is overloaded (503/429).
 //
 // Env vars (set in Vercel → Settings → Environment Variables):
 //   GEMINI_API_KEY   (required)  your key from https://aistudio.google.com
-//   GEMINI_MODEL     (optional)  defaults to "gemini-flash-latest"
+//   GEMINI_MODEL     (optional)  a preferred model; tried first
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   const KEY = process.env.GEMINI_API_KEY;
   if (!KEY) { res.status(500).json({ error: 'Server not configured', detail: 'GEMINI_API_KEY is missing. Add it in Vercel → Settings → Environment Variables.' }); return; }
-  const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 
-  // Read + parse JSON body (works on any Node serverless runtime).
+  // Models tried in order; each retried a couple of times on overload.
+  const MODELS = [...new Set([
+    process.env.GEMINI_MODEL,
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
+  ].filter(Boolean))];
+
   let payload;
   try {
     const chunks = [];
@@ -24,50 +32,61 @@ export default async function handler(req, res) {
   if (!files.length) { res.status(400).json({ error: 'No files provided' }); return; }
 
   const manifest = files.map((f, i) => `  ${i + 1}. (${f.group || 'document'}) ${f.name || 'file ' + (i + 1)}`).join('\n');
-
   const parts = [{ text: buildPrompt(manifest) }];
   for (const f of files) {
     if (!f.data) continue;
     parts.push({ text: `\n--- FILE: ${f.name} (${f.group}) ---` });
     parts.push({ inlineData: { mimeType: f.mimeType || 'application/pdf', data: f.data } });
   }
-
   const body = {
     contents: [{ role: 'user', parts }],
     generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
   };
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent?key=${KEY}`;
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const raw = await r.text();
-    if (!r.ok) { res.status(502).json({ error: 'Gemini API error', detail: safe(raw) }); return; }
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  let last = { status: 0, raw: '' };
 
-    let j;
-    try { j = JSON.parse(raw); } catch (e) { res.status(502).json({ error: 'Invalid Gemini response' }); return; }
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let r, raw;
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${KEY}`;
+        r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        raw = await r.text();
+      } catch (e) {
+        last = { status: 502, raw: String((e && e.message) || e) };
+        await sleep(600); continue;
+      }
 
-    const text = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
-    if (!text) {
-      const reason = j.candidates?.[0]?.finishReason || j.promptFeedback?.blockReason || 'empty';
-      res.status(502).json({ error: 'No analysis returned', detail: 'finishReason: ' + reason });
-      return;
+      if (r.ok) {
+        try {
+          const j = JSON.parse(raw);
+          const text = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+          if (!text) { last = { status: 502, raw: 'finishReason: ' + (j.candidates?.[0]?.finishReason || j.promptFeedback?.blockReason || 'empty') }; break; }
+          let data;
+          try { data = JSON.parse(text); }
+          catch (e) { const a = text.indexOf('{'), b = text.lastIndexOf('}'); data = JSON.parse(text.slice(a, b + 1)); }
+          data.coverage = Array.isArray(data.coverage) ? data.coverage : [];
+          data.documents = Array.isArray(data.documents) ? data.documents : [];
+          data.amounts = Array.isArray(data.amounts) ? data.amounts : [];
+          res.status(200).json(data);
+          return;
+        } catch (e) {
+          last = { status: 502, raw: 'Could not parse analysis' }; break;
+        }
+      }
+
+      last = { status: r.status, raw };
+      if (r.status === 503 || r.status === 429) { await sleep(800 * (attempt + 1)); continue; } // overloaded: retry, then next model
+      break; // 404 (bad model) or other: move to next model
     }
-
-    let data;
-    try { data = JSON.parse(text); }
-    catch (e) {
-      const a = text.indexOf('{'), b = text.lastIndexOf('}');
-      try { data = JSON.parse(text.slice(a, b + 1)); }
-      catch (e2) { res.status(502).json({ error: 'Could not parse analysis', detail: safe(text) }); return; }
-    }
-
-    data.coverage = Array.isArray(data.coverage) ? data.coverage : [];
-    data.documents = Array.isArray(data.documents) ? data.documents : [];
-    data.amounts = Array.isArray(data.amounts) ? data.amounts : [];
-    res.status(200).json(data);
-  } catch (e) {
-    res.status(502).json({ error: 'Request to Gemini failed', detail: String((e && e.message) || e) });
   }
+
+  const overloaded = last.status === 503 || last.status === 429;
+  res.status(502).json({
+    error: overloaded ? 'The AI is busy right now' : 'Analysis failed',
+    detail: overloaded ? 'Gemini is temporarily overloaded. Please wait a minute and try again.' : safe(last.raw)
+  });
 }
 
 function safe(s) { return String(s || '').slice(0, 600); }
