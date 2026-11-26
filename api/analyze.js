@@ -69,6 +69,7 @@ export default async function handler(req, res) {
           data.coverage = Array.isArray(data.coverage) ? data.coverage : [];
           data.documents = Array.isArray(data.documents) ? data.documents : [];
           data.amounts = Array.isArray(data.amounts) ? data.amounts : [];
+          data._model = model; // which model actually produced this result
           res.status(200).json(data);
           return;
         } catch (e) {
