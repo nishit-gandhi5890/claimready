@@ -108,9 +108,10 @@ GENERAL RULES
 - Only raise an issue you can actually SEE evidence for in the documents. If something (a diagnosis, a charge, an itemised line, a policy limit, a date) is genuinely not visible, do NOT invent a problem — omit it, or mark s:"warn" with an honest "couldn't read this from the uploaded files". NEVER assert ineligibility, a mismatch, or a deduction you cannot substantiate.
 
 documents
-- Identify what each attached file is. A required document is PRESENT (s:"ok") if ANY attached file is that document. Only mark s:"bad" (missing) when NONE of the files is that document. When unsure, do NOT mark it missing.
-- Standard reimbursement set: signed claim form, photo ID / KYC, discharge summary, final hospital bill(s) with break-up, pharmacy bills / prescription, investigation & lab reports, hospital registration certificate (as required by the policy).
-- Also flag a report s:"bad" (referenced-but-missing) ONLY if a bill explicitly charges for a specific named test AND no attached file is that report.
+- Go through the standard reimbursement set ONE BY ONE and return a finding for each: (1) signed claim form, (2) photo ID / KYC, (3) discharge summary, (4) final hospital bill(s) with break-up, (5) pharmacy bills / prescription, (6) investigation & lab reports, (7) hospital registration certificate.
+- For each, check whether ANY attached file is that document (judge by content, else by filename). If yes, mark it s:"ok". If NONE of the attached files is that document, mark it s:"bad" (missing) with a short note telling the user to attach it. You MUST still flag the hospital registration certificate, the signed claim form and the KYC/photo ID when they are absent — these are commonly forgotten and are a frequent reason claims get queried, so do not skip them.
+- Never mark a document missing when a matching file IS in the attached list — flag only genuine absences.
+- Also flag a specific report s:"bad" (referenced-but-missing) when a bill explicitly charges for a named test AND no attached file is that report.
 
 eligibility
 - Inpatient hospitalisation needs >=24 hours of admission. Read admission and discharge date/time from the discharge summary / bill; if >=24h, it qualifies (s:"ok"). A dependent parent / parent-in-law covered on the policy is eligible. Do not flag eligibility you can't substantiate.
