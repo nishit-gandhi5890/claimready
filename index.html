@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Public+Sans:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{
   --bg:#eef2f3; --surface:#ffffff; --surface-2:#f6f9fa;
@@ -290,13 +291,46 @@ function animateSteps(){
 function resetAnalyzing(){ document.getElementById('spin').style.display=''; document.getElementById('analyzeTitle').textContent='Reading your claim…'; document.getElementById('steps').hidden=false; document.getElementById('errbox').hidden=true; }
 function showError(msg,detail){ document.getElementById('spin').style.display='none'; document.getElementById('analyzeTitle').textContent='Couldn’t analyse this claim'; document.getElementById('steps').hidden=true; document.getElementById('errmsg').innerHTML=esc(msg)+(detail?('<br><span style="opacity:.7;font-size:12.5px">'+esc(detail)+'</span>'):''); document.getElementById('errbox').hidden=false; }
 
-function fileToPart(file,group){
+function blobToB64(blob){
   return new Promise((resolve,reject)=>{
     const rd=new FileReader();
-    rd.onload=()=>resolve({name:file.name, mimeType:file.type||'application/pdf', group, data:String(rd.result).split(',')[1]});
-    rd.onerror=()=>reject(new Error('Could not read '+file.name));
-    rd.readAsDataURL(file);
+    rd.onload=()=>resolve(String(rd.result).split(',')[1]);
+    rd.onerror=()=>reject(new Error('read failed'));
+    rd.readAsDataURL(blob);
   });
+}
+async function shrinkToJpeg(blob, maxDim=1600, q=0.72){
+  const bmp=await createImageBitmap(blob);
+  const scale=Math.min(1, maxDim/Math.max(bmp.width,bmp.height));
+  const w=Math.max(1,Math.round(bmp.width*scale)), h=Math.max(1,Math.round(bmp.height*scale));
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  c.getContext('2d').drawImage(bmp,0,0,w,h);
+  return await new Promise(r=>c.toBlob(r,'image/jpeg',q));
+}
+// Compress each document into sharp page-images in the browser, so many files fit under the upload limit.
+async function fileToParts(file,group){
+  const type=file.type||''; const out=[];
+  if(type==='application/pdf' || /\.pdf$/i.test(file.name)){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    const pages=Math.min(pdf.numPages,15);
+    for(let pn=1;pn<=pages;pn++){
+      const page=await pdf.getPage(pn);
+      const base=page.getViewport({scale:1});
+      const scale=Math.min(2.2, 1600/Math.max(base.width,base.height));
+      const vp=page.getViewport({scale});
+      const c=document.createElement('canvas'); c.width=vp.width; c.height=vp.height;
+      await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+      const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.72));
+      if(blob) out.push({name:file.name+' (p'+pn+')', mimeType:'image/jpeg', group, data:await blobToB64(blob)});
+    }
+  } else if(type.startsWith('image/')){
+    const blob=await shrinkToJpeg(file);
+    out.push({name:file.name, mimeType:'image/jpeg', group, data:await blobToB64(blob)});
+  } else {
+    out.push({name:file.name, mimeType:type||'application/octet-stream', group, data:await blobToB64(file)});
+  }
+  return out;
 }
 
 async function runAnalyzing(payload){
@@ -305,7 +339,12 @@ async function runAnalyzing(payload){
   if(!payload){ await minWait; claim=sampleClaim; claimSource='sample'; render(); show('results'); return; }
   try{
     const all=[...payload.policy.map(f=>['policy document',f]), ...payload.docs.map(f=>['claim document',f]), ...payload.card.map(f=>['mediclaim card',f])];
-    const parts=await Promise.all(all.map(([g,f])=>fileToPart(f,g)));
+    let parts=[];
+    for(const [g,f] of all){ const ps=await fileToParts(f,g); parts=parts.concat(ps); }
+    let total=0; const MAXB=3600000; const kept=[];
+    for(const pt of parts){ total+=(pt.data?pt.data.length:0); if(total>MAXB) break; kept.push(pt); }
+    parts=kept;
+    if(!parts.length){ await minWait; showError('Couldn’t read these files.', 'Try clearer PDFs or photos.'); return; }
     const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({files:parts})});
     const out=await r.json().catch(()=>null);
     await minWait;
