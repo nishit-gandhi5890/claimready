@@ -13,13 +13,9 @@ export default async function handler(req, res) {
   if (!KEY) { res.status(500).json({ error: 'Server not configured', detail: 'GEMINI_API_KEY is missing. Add it in Vercel → Settings → Environment Variables.' }); return; }
 
   // Models tried in order; each retried a couple of times on overload.
-  const MODELS = [...new Set([
-    process.env.GEMINI_MODEL,
-    'gemini-flash-latest',
-    'gemini-flash-lite-latest',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash'
-  ].filter(Boolean))];
+  // Model comes ONLY from the GEMINI_MODEL environment variable (set it in Vercel).
+  // A single default is used only if the variable is not set at all.
+  const MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 
   let payload;
   try {
@@ -46,41 +42,39 @@ export default async function handler(req, res) {
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   let last = { status: 0, raw: '' };
 
-  for (const model of MODELS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      let r, raw;
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${KEY}`;
-        r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        raw = await r.text();
-      } catch (e) {
-        last = { status: 502, raw: String((e && e.message) || e) };
-        await sleep(600); continue;
-      }
-
-      if (r.ok) {
-        try {
-          const j = JSON.parse(raw);
-          const text = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
-          if (!text) { last = { status: 502, raw: 'finishReason: ' + (j.candidates?.[0]?.finishReason || j.promptFeedback?.blockReason || 'empty') }; break; }
-          let data;
-          try { data = JSON.parse(text); }
-          catch (e) { const a = text.indexOf('{'), b = text.lastIndexOf('}'); data = JSON.parse(text.slice(a, b + 1)); }
-          data.coverage = Array.isArray(data.coverage) ? data.coverage : [];
-          data.documents = Array.isArray(data.documents) ? data.documents : [];
-          data.amounts = Array.isArray(data.amounts) ? data.amounts : [];
-          data._model = model; // which model actually produced this result
-          res.status(200).json(data);
-          return;
-        } catch (e) {
-          last = { status: 502, raw: 'Could not parse analysis' }; break;
-        }
-      }
-
-      last = { status: r.status, raw };
-      if (r.status === 503 || r.status === 429) { await sleep(800 * (attempt + 1)); continue; } // overloaded: retry, then next model
-      break; // 404 (bad model) or other: move to next model
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let r, raw;
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent?key=${KEY}`;
+      r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      raw = await r.text();
+    } catch (e) {
+      last = { status: 502, raw: String((e && e.message) || e) };
+      await sleep(700); continue;
     }
+
+    if (r.ok) {
+      try {
+        const j = JSON.parse(raw);
+        const text = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+        if (!text) { last = { status: 502, raw: 'finishReason: ' + (j.candidates?.[0]?.finishReason || j.promptFeedback?.blockReason || 'empty') }; break; }
+        let data;
+        try { data = JSON.parse(text); }
+        catch (e) { const a = text.indexOf('{'), b = text.lastIndexOf('}'); data = JSON.parse(text.slice(a, b + 1)); }
+        data.coverage = Array.isArray(data.coverage) ? data.coverage : [];
+        data.documents = Array.isArray(data.documents) ? data.documents : [];
+        data.amounts = Array.isArray(data.amounts) ? data.amounts : [];
+        data._model = MODEL; // the model that produced this result (from GEMINI_MODEL)
+        res.status(200).json(data);
+        return;
+      } catch (e) {
+        last = { status: 502, raw: 'Could not parse analysis' }; break;
+      }
+    }
+
+    last = { status: r.status, raw };
+    if (r.status === 503 || r.status === 429) { await sleep(800 * (attempt + 1)); continue; } // overloaded: retry same model
+    break; // other errors (e.g. a wrong model name in GEMINI_MODEL): stop and report
   }
 
   const overloaded = last.status === 503 || last.status === 429;
