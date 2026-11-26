@@ -83,11 +83,14 @@ export default async function handler(req, res) {
     }
   }
 
-  const overloaded = last.status === 503 || last.status === 429;
-  res.status(502).json({
-    error: overloaded ? 'The AI is busy right now' : 'Analysis failed',
-    detail: overloaded ? 'Gemini is temporarily overloaded. Please wait a minute and try again.' : safe(last.raw)
-  });
+  const tried = MODELS.join(' , ');
+  if (last.status === 429) {
+    res.status(502).json({ error: 'Free-tier limit reached', detail: 'Rate limit hit on: ' + tried + '. This is Gemini’s free-tier quota (per-minute or per-day) from heavy use — not your code. Wait a bit, or set GEMINI_MODEL / GEMINI_MODEL_BACKUP to a different model.' });
+  } else if (last.status === 503) {
+    res.status(502).json({ error: 'The AI is busy right now', detail: 'Model overloaded (' + tried + '). Wait a minute and try again.' });
+  } else {
+    res.status(502).json({ error: 'Analysis failed', detail: 'Models tried: ' + tried + '. ' + safe(last.raw) });
+  }
 }
 
 function safe(s) { return String(s || '').slice(0, 600); }
