@@ -299,7 +299,7 @@ function blobToB64(blob){
     rd.readAsDataURL(blob);
   });
 }
-async function shrinkToJpeg(blob, maxDim=1600, q=0.72){
+async function shrinkToJpeg(blob, maxDim=1350, q=0.62){
   const bmp=await createImageBitmap(blob);
   const scale=Math.min(1, maxDim/Math.max(bmp.width,bmp.height));
   const w=Math.max(1,Math.round(bmp.width*scale)), h=Math.max(1,Math.round(bmp.height*scale));
@@ -313,15 +313,16 @@ async function fileToParts(file,group){
   if(type==='application/pdf' || /\.pdf$/i.test(file.name)){
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-    const pages=Math.min(pdf.numPages,15);
+    const cap = (group==='policy document') ? 10 : 8;   // keep any one file from eating the whole budget
+    const pages=Math.min(pdf.numPages,cap);
     for(let pn=1;pn<=pages;pn++){
       const page=await pdf.getPage(pn);
       const base=page.getViewport({scale:1});
-      const scale=Math.min(2.2, 1600/Math.max(base.width,base.height));
+      const scale=Math.min(2.0, 1350/Math.max(base.width,base.height));
       const vp=page.getViewport({scale});
       const c=document.createElement('canvas'); c.width=vp.width; c.height=vp.height;
       await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-      const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.72));
+      const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.62));
       if(blob) out.push({name:file.name+' (p'+pn+')', mimeType:'image/jpeg', group, data:await blobToB64(blob)});
     }
   } else if(type.startsWith('image/')){
@@ -339,11 +340,19 @@ async function runAnalyzing(payload){
   if(!payload){ await minWait; claim=sampleClaim; claimSource='sample'; render(); show('results'); return; }
   try{
     const all=[...payload.policy.map(f=>['policy document',f]), ...payload.docs.map(f=>['claim document',f]), ...payload.card.map(f=>['mediclaim card',f])];
-    let parts=[];
-    for(const [g,f] of all){ const ps=await fileToParts(f,g); parts=parts.concat(ps); }
-    let total=0; const MAXB=3600000; const kept=[];
-    for(const pt of parts){ total+=(pt.data?pt.data.length:0); if(total>MAXB) break; kept.push(pt); }
-    parts=kept;
+    const perFile=[];
+    for(const [g,f] of all){ perFile.push(await fileToParts(f,g)); }
+    // round-robin: every uploaded document contributes its first page before any file adds extra pages
+    let parts=[]; let total=0; const MAXB=4000000;
+    const maxLen=perFile.reduce((m,a)=>Math.max(m,a.length),0);
+    for(let idx=0; idx<maxLen; idx++){
+      for(const arr of perFile){
+        if(idx>=arr.length) continue;
+        const pt=arr[idx]; const sz=pt.data?pt.data.length:0;
+        if(total+sz>MAXB){ idx=maxLen; break; }
+        total+=sz; parts.push(pt);
+      }
+    }
     if(!parts.length){ await minWait; showError('Couldn’t read these files.', 'Try clearer PDFs or photos.'); return; }
     const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({files:parts})});
     const out=await r.json().catch(()=>null);
