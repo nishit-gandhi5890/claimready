@@ -97,7 +97,7 @@ function buildPrompt(manifest) {
 You are given the patient's POLICY and CLAIM DOCUMENTS as attached files (PDFs and/or photos). Read EVERY page of EVERY file carefully and at full detail.
 
 Return ONLY a JSON object matching exactly this schema:
-{"insured":string,"age":string,"insurer":string,"plan":string,"sumInsured":number|null,"policyStart":string,"admission":string,"discharge":string,"hospital":string,"billTotal":number|null,"claimForm":number|null,"coverage":[F],"documents":[F],"amounts":[F]}
+{"insured":string,"age":string,"insurer":string,"plan":string,"sumInsured":number|null,"policyStart":string,"admission":string,"discharge":string,"hospital":string,"billTotal":number|null,"claimForm":number|null,"coverage":[F],"documents":[F],"amounts":[F],"payout":{"billTotal":number|null,"nonPayable":number,"otherDeductions":number,"copayPercent":number|null,"deductible":number}}
 where F = {"s":"ok"|"warn"|"bad","t":short title,"amt":number|null,"dir":"ok"|"bad","p":one plain sentence a layperson understands,"basis":the exact policy clause/section or bill line it is based on,"conf":"High confidence"|"Estimate — verify with insurer"}
 
 FILES PROVIDED (these are ALL the documents the patient attached — treat every one as ATTACHED):
@@ -124,8 +124,16 @@ amounts & money
 - Compare the claim-form amount and the payment receipts against the bill total; flag a mismatch only if the numbers genuinely differ.
 - Room rent: flag s:"warn" ONLY if a bill shows a per-day room charge that EXCEEDS a room-rent limit stated in the policy. If it is within the stated limit, mark s:"ok". If either figure isn't visible, don't flag it.
 - Co-pay: if the policy states any co-pay (including a parental co-pay for a parent's claim), apply the percentage to the admissible amount and show the rupee figure the patient will bear. This is often the biggest surprise — surface it clearly.
-- Non-payables: scan the itemised bill against the IRDAI non-payable / non-medical items list (gloves, consumables, admin/registration fees, toiletries, food) and total what applies. Do NOT answer "not checkable" when an itemised bill is provided.
+- Non-payables: read the itemised bill carefully, LINE BY LINE, and list EVERY non-medical / consumable / administrative item you find — for example gloves, gowns, caps, masks, under-pads, bed/bath wipes, cotton and other consumables; admission, registration, record-keeping or service charges; food, toiletries and comfort items. Name the items and SUM ALL of them — do not stop at the first one. Do NOT answer "not checkable" when an itemised bill is provided; if part of the bill is not legible, say so honestly rather than skipping it.
 - Any amount that depends on insurer adjudication must have conf:"Estimate — verify with insurer".
+
+payout (NUMBERS ONLY — do NOT compute the final payable yourself; the app does the arithmetic)
+- billTotal: the SUM of ALL hospital bills (the final payable amount after discount/round-off).
+- nonPayable: the total rupee value of ALL non-medical / non-payable / consumable / administrative line items you found in the bill (0 if none). This must equal the sum you described in the non-payables finding above.
+- otherDeductions: any other amount that will be deducted, such as room rent charged above the policy cap (0 if none).
+- copayPercent: the co-pay percentage that applies to THIS claim, as a plain number, e.g. 20 (null if there is genuinely no co-pay). A parent's / parent-in-law's claim often carries a parental co-pay — put that percentage here.
+- deductible: any fixed rupee deductible under the policy (0 if none).
+Do not leave payout out. If a figure is unknown, use 0 for the amounts and null for copayPercent.
 
 - Use the mediclaim card (if provided) to read insurer, TPA, member name and policy number.
 - Keep every "p" under 40 words. Amounts are Indian rupees. Return ONLY the JSON object.`;
