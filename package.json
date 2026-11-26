@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Pre-submission health-insurance reimbursement claim checker (Gemini-powered).",
   "engines": {
-    "node": "20.x"
+    "node": "26.x"
   }
 }
