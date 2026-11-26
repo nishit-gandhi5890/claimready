@@ -358,7 +358,7 @@ async function fileToParts(file,group){
     const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
     const isPolicy = (group==='policy document');
     const cap = isPolicy ? 10 : 8;        // keep any one file from eating the whole budget
-    const maxDim = isPolicy ? 1250 : 1700; // claim docs (bills) get higher detail for line-items
+    const maxDim = isPolicy ? 1250 : 1850; // claim docs (bills) get higher detail for line-items
     const q = isPolicy ? 0.6 : 0.66;
     const pages=Math.min(pdf.numPages,cap);
     for(let pn=1;pn<=pages;pn++){
