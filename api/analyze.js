@@ -97,7 +97,7 @@ function buildPrompt(manifest) {
 You are given the patient's POLICY and CLAIM DOCUMENTS as attached files (PDFs and/or photos). Read EVERY page of EVERY file carefully and at full detail.
 
 Return ONLY a JSON object matching exactly this schema:
-{"insured":string,"age":string,"insurer":string,"plan":string,"sumInsured":number|null,"policyStart":string,"admission":string,"discharge":string,"hospital":string,"billTotal":number|null,"claimForm":number|null,"coverage":[F],"documents":[F],"amounts":[F],"payout":{"billTotal":number|null,"nonPayable":number,"otherDeductions":number,"copayPercent":number|null,"deductible":number}}
+{"insured":string,"age":string,"insurer":string,"plan":string,"sumInsured":number|null,"policyStart":string,"admission":string,"discharge":string,"hospital":string,"billTotal":number|null,"claimForm":number|null,"coverage":[F],"documents":[F],"amounts":[F],"payout":{"billTotal":number|null,"nonPayable":number,"nonPayableItems":[{"item":string,"amount":number}],"otherDeductions":number,"copayPercent":number|null,"deductible":number}}
 where F = {"s":"ok"|"warn"|"bad","t":short title,"amt":number|null,"dir":"ok"|"bad","p":one plain sentence a layperson understands,"basis":the exact policy clause/section or bill line it is based on,"conf":"High confidence"|"Estimate — verify with insurer"}
 
 FILES PROVIDED (these are ALL the documents the patient attached — treat every one as ATTACHED):
@@ -129,7 +129,8 @@ amounts & money
 
 payout (NUMBERS ONLY — do NOT compute the final payable yourself; the app does the arithmetic)
 - billTotal: the SUM of ALL hospital bills (the final payable amount after discount/round-off).
-- nonPayable: the total rupee value of ALL non-medical / non-payable / consumable / administrative line items you found in the bill (0 if none). This must equal the sum you described in the non-payables finding above.
+- nonPayableItems: an array listing EACH non-payable / non-medical line item you find in the bill, as {"item": short name, "amount": rupees}. Include ONLY genuinely non-payable items — gloves, gowns, caps, masks, under-pads, bed/bath wipes, cotton and similar consumables; admission, registration, record-keeping, service or documentation charges; food, toiletries, attendant/comfort items. Do NOT include payable items such as medicines, implants, investigations, procedures, doctor/surgeon fees or room rent. Read the whole itemised bill carefully and do not miss small lines such as a registration or admission fee.
+- nonPayable: the SUM of the amounts in nonPayableItems (0 if the list is empty).
 - otherDeductions: any other amount that will be deducted, such as room rent charged above the policy cap (0 if none).
 - copayPercent: the co-pay percentage that applies to THIS claim, as a plain number, e.g. 20 (null if there is genuinely no co-pay). A parent's / parent-in-law's claim often carries a parental co-pay — put that percentage here.
 - deductible: any fixed rupee deductible under the policy (0 if none).
