@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ClaimReady</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#eef2f3; --surface:#ffffff; --surface-2:#f6f9fa;
+  --ink:#10242c; --muted:#5a6d75; --line:#dde6e8;
+  --primary:#0e7c86; --primary-ink:#ffffff; --primary-soft:#dff0f1;
+  --ok:#157f4b; --ok-soft:#dff2e7;
+  --warn:#9a6a10; --warn-soft:#fbf0d8;
+  --bad:#bc3a2c; --bad-soft:#fae1dd;
+  --display:"Plus Jakarta Sans",system-ui,sans-serif;
+  --body:"Public Sans",system-ui,sans-serif;
+  --radius:14px; --shadow:0 1px 2px rgba(16,36,44,.06),0 8px 24px rgba(16,36,44,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a1315; --surface:#111e22; --surface-2:#0e191c;
+  --ink:#e7eef0; --muted:#9bb0b6; --line:#233238;
+  --primary:#2bb3bf; --primary-ink:#042024; --primary-soft:#113237;
+  --ok:#49c483; --ok-soft:#102a1f; --warn:#e0b25a; --warn-soft:#2a2213;
+  --bad:#f0806f; --bad-soft:#2d1613;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0a1315; --surface:#111e22; --surface-2:#0e191c;
+  --ink:#e7eef0; --muted:#9bb0b6; --line:#233238;
+  --primary:#2bb3bf; --primary-ink:#042024; --primary-soft:#113237;
+  --ok:#49c483; --ok-soft:#102a1f; --warn:#e0b25a; --warn-soft:#2a2213;
+  --bad:#f0806f; --bad-soft:#2d1613;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3); color-scheme:dark;
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased}
+.wrap{max-width:760px; margin:0 auto; padding-inline:16px; padding-block:0 48px}
+h1,h2,h3{font-family:var(--display); margin:0; text-wrap:balance; letter-spacing:-.01em}
+.tnum{font-variant-numeric:tabular-nums} .muted{color:var(--muted)}
+header{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:color-mix(in srgb,var(--bg) 86%,transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line)}
+.bar{max-width:760px; margin:0 auto; padding:12px 16px; display:flex; align-items:center; gap:10px}
+.logo{display:flex; align-items:center; gap:9px; font-family:var(--display); font-weight:800; font-size:17px; letter-spacing:-.02em; cursor:pointer; background:none; border:0; color:var(--ink); padding:0}
+.mark{width:26px; height:26px; border-radius:7px; background:var(--primary); color:var(--primary-ink); display:grid; place-items:center; font-weight:800; font-size:15px}
+.bar .spacer{flex:1}
+.ghost{font-family:var(--body); font-weight:600; font-size:13.5px; color:var(--primary); background:var(--primary-soft); border:0; padding:8px 12px; border-radius:9px; cursor:pointer}
+.btn{font-family:var(--display); font-weight:700; font-size:15px; border:0; border-radius:11px; padding:13px 18px; cursor:pointer; background:var(--primary); color:var(--primary-ink); width:100%}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+.btn.sec{background:var(--surface); color:var(--ink); border:1px solid var(--line)}
+.btn:focus-visible,.ghost:focus-visible,.logo:focus-visible,.drop:focus-visible{outline:2px solid var(--primary); outline-offset:2px}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow)}
+.pad{padding:18px}
+.view{display:none} .view.on{display:block}
+.hero{padding:26px 4px 10px}
+.hero h1{font-size:26px; font-weight:800; line-height:1.15}
+.hero p{color:var(--muted); margin:10px 0 0; font-size:15.5px}
+.drops{display:grid; gap:12px; margin-top:18px}
+.drop{background:var(--surface); border:1.5px dashed var(--line); border-radius:var(--radius); padding:18px; text-align:left; cursor:pointer; display:flex; gap:13px; align-items:center; width:100%; color:var(--ink); font-family:var(--body)}
+.drop:hover{border-color:var(--primary)}
+.drop .ic{width:40px; height:40px; border-radius:10px; background:var(--primary-soft); color:var(--primary); display:grid; place-items:center; flex:none; font-size:19px}
+.drop b{font-family:var(--display); font-weight:700; font-size:15px; display:block}
+.drop .optional{font-weight:600;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.drop small{color:var(--muted)}
+.filelist{margin-top:10px; display:flex; flex-wrap:wrap; gap:7px}
+.chip{display:inline-flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:500; max-width:100%}
+.chip span.nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.chip .x{color:var(--ok); flex:none}
+.actions{margin-top:18px; display:grid; gap:10px}
+.samplelink{text-align:center; margin-top:4px}
+.samplelink button{background:none; border:0; color:var(--primary); font-weight:600; font-family:var(--body); font-size:14px; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+.note{font-size:12.5px; color:var(--muted); text-align:center; margin-top:14px; line-height:1.45}
+.analyzing{padding:52px 10px; text-align:center}
+.spin{width:46px; height:46px; margin:0 auto 22px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--primary); animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.steps{max-width:340px; margin:18px auto 0; text-align:left; display:grid; gap:11px}
+.step{display:flex; gap:10px; align-items:center; color:var(--muted); font-size:14px; transition:color .3s}
+.step.done,.step.active{color:var(--ink)}
+.step .dot{width:18px; height:18px; border-radius:50%; border:2px solid var(--line); flex:none; display:grid; place-items:center}
+.step.done .dot{background:var(--ok); border-color:var(--ok); color:#fff}
+.step.done .dot svg{width:11px;height:11px}
+.errbox{max-width:440px;margin:10px auto 0}
+.errbox p{color:var(--muted);font-size:14px}
+.summary{margin-top:20px; overflow:hidden}
+.srcband{font-size:11.5px;font-weight:700;letter-spacing:.03em;padding:7px 20px;border-bottom:1px solid var(--line)}
+.srcband.sample{background:var(--primary-soft);color:var(--primary)}
+.srcband.you{background:var(--ok-soft);color:var(--ok)}
+.summary .top{padding:20px; display:flex; gap:16px; align-items:center; border-bottom:1px solid var(--line)}
+.score{width:74px; height:74px; border-radius:16px; flex:none; display:grid; place-items:center; text-align:center}
+.score.bad{background:var(--bad-soft); color:var(--bad)} .score.warn{background:var(--warn-soft); color:var(--warn)} .score.ok{background:var(--ok-soft); color:var(--ok)}
+.score b{font-family:var(--display); font-size:24px; font-weight:800; line-height:1}
+.score small{font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em}
+.summary h2{font-size:19px; font-weight:800}
+.summary .sub{color:var(--muted); font-size:14px; margin-top:3px}
+.counts{display:flex; gap:8px; flex-wrap:wrap; padding:14px 20px}
+.count{display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; padding:6px 11px; border-radius:999px; background:var(--surface-2); border:1px solid var(--line)}
+.count .n{font-variant-numeric:tabular-nums}
+.dotc{width:9px;height:9px;border-radius:50%}
+.d-bad{background:var(--bad)} .d-warn{background:var(--warn)} .d-ok{background:var(--ok)}
+.claimhead{display:flex; justify-content:space-between; gap:12px 16px; padding:14px 20px; border-top:1px solid var(--line); flex-wrap:wrap; font-size:13px}
+.claimhead div b{font-family:var(--display)}
+.fix{margin-top:20px; border-left:3px solid var(--bad)}
+.fix .pad{padding:16px 18px}
+.fix h3{font-size:15px; display:flex; align-items:center; gap:8px}
+.fix h3 svg{width:18px;height:18px;flex:none;color:var(--bad)}
+.fix ol{margin:12px 0 0; padding-left:20px; display:grid; gap:9px}
+.fix li{font-size:14px} .fix li b{font-family:var(--display)}
+.section{margin-top:24px}
+.section>h3{font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:11px; padding-left:2px}
+.finding{display:flex; gap:13px; padding:16px 18px; border-bottom:1px solid var(--line)}
+.finding:last-child{border-bottom:0}
+.finding .fic{width:30px; height:30px; border-radius:9px; flex:none; display:grid; place-items:center; margin-top:1px}
+.fic svg{width:17px;height:17px}
+.fic.ok{background:var(--ok-soft); color:var(--ok)} .fic.warn{background:var(--warn-soft); color:var(--warn)} .fic.bad{background:var(--bad-soft); color:var(--bad)}
+.finding .ft{flex:1; min-width:0}
+.finding .ft h4{font-family:var(--display); font-size:15px; font-weight:700; margin:0 0 3px; display:flex; justify-content:space-between; gap:10px; align-items:baseline}
+.amt{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap}
+.amt.bad{color:var(--bad)} .amt.ok{color:var(--ok)}
+.finding p{margin:4px 0 0; font-size:13.5px; color:var(--ink)}
+.basis{margin-top:9px; font-size:12.5px; color:var(--muted); background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; display:flex; gap:7px; align-items:flex-start}
+.basis svg{width:13px;height:13px;flex:none;margin-top:2px;opacity:.7}
+.conf{display:inline-block; margin-top:9px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 8px}
+.disclaim{margin-top:22px; font-size:12.5px; color:var(--muted); line-height:1.5; text-align:center; padding:0 6px}
+.restart{margin-top:20px}
+.proto{display:inline-flex; gap:7px; align-items:center; background:var(--primary-soft); color:var(--primary); font-size:11.5px; font-weight:700; padding:5px 11px; border-radius:999px; margin-bottom:4px}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <button class="logo" id="home" aria-label="ClaimReady home"><span class="mark">✓</span>ClaimReady</button>
+    <span class="spacer"></span>
+    <button class="ghost" id="uploadBtn">Check a claim</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="view" id="v-upload">
+    <div class="hero">
+      <span class="proto">Beta</span>
+      <h1>Check your claim before you submit it.</h1>
+      <p>Upload your policy and hospital documents. We check what’s covered, what’s missing, and what the insurer is likely to cut — so you fix it before a rejection comes back.</p>
+    </div>
+    <div class="drops">
+      <button class="drop" id="dropPolicy"><span class="ic">📄</span><span><b>Policy document</b><small id="policyHint">Your health policy / benefits PDF</small></span></button>
+      <div class="filelist" id="policyFiles" hidden></div>
+      <button class="drop" id="dropDocs"><span class="ic">🧾</span><span><b>Claim documents</b><small id="docsHint">Discharge summary, all bills &amp; receipts, reports, prescriptions…</small></span></button>
+      <div class="filelist" id="docFiles" hidden></div>
+      <button class="drop" id="dropCard"><span class="ic">💳</span><span><b>Mediclaim card <span class="optional">optional</span></b><small id="cardHint">Your health insurance / TPA card</small></span></button>
+      <div class="filelist" id="cardFiles" hidden></div>
+    </div>
+    <input type="file" id="policyInput" accept="application/pdf,image/*" multiple hidden>
+    <input type="file" id="docsInput" accept="application/pdf,image/*" multiple hidden>
+    <input type="file" id="cardInput" accept="application/pdf,image/*" multiple hidden>
+    <div class="actions"><button class="btn" id="analyzeBtn" disabled>Analyze my claim</button></div>
+    <div class="samplelink"><button id="loadSample">Don’t have files handy? See a sample claim →</button></div>
+    <p class="note">PDFs and photos both work — read at full resolution by Gemini. Upload every bill and receipt for the most accurate result.</p>
+  </section>
+
+  <section class="view" id="v-analyzing">
+    <div class="analyzing">
+      <div class="spin" id="spin"></div>
+      <h2 id="analyzeTitle">Reading your claim…</h2>
+      <div class="steps" id="steps">
+        <div class="step" data-i="0"><span class="dot"></span>Reading every document</div>
+        <div class="step" data-i="1"><span class="dot"></span>Adding up all bills</div>
+        <div class="step" data-i="2"><span class="dot"></span>Checking coverage &amp; waiting periods</div>
+        <div class="step" data-i="3"><span class="dot"></span>Checking what’s missing or at risk</div>
+      </div>
+      <div class="errbox" id="errbox" hidden>
+        <p id="errmsg"></p>
+        <div class="actions">
+          <button class="btn" id="errSample">See the sample claim instead</button>
+          <button class="btn sec" id="errBack">Back to upload</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-results">
+    <div class="card summary" id="summaryCard"></div>
+    <div class="card fix" id="fixCard" hidden></div>
+    <div class="section" id="sec-cov"></div>
+    <div class="section" id="sec-doc"></div>
+    <div class="section" id="sec-amt"></div>
+    <p class="disclaim" id="disclaimer"></p>
+    <div class="actions restart"><button class="btn sec" id="restart">Check another claim</button></div>
+  </section>
+</div>
+
+<script>
+const I={
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
+  cross:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>'
+};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toNum=v=>{ if(typeof v==='number') return v; if(v==null) return null; const m=String(v).replace(/[^0-9.]/g,''); return m?Math.round(parseFloat(m)):null; };
+const rupee=n=>'₹'+Number(n).toLocaleString('en-IN');
+
+const sampleClaim={
+  insured:"Sample Patient", age:58, insurer:"Acme Health Insurance", plan:"Family Floater",
+  billTotal:70326,
+  coverage:[
+    {s:'ok',t:'Treatment is covered',p:'The procedure is a covered hospitalisation under this policy.',basis:'Policy — Covered Benefits',conf:'High confidence'},
+    {s:'ok',t:'No waiting-period issue',p:'Pre-existing and first-year waiting periods are waived under this group policy.',basis:'Policy — Waiting Periods',conf:'High confidence'}
+  ],
+  documents:[
+    {s:'ok',t:'Discharge summary',p:'Present.'},
+    {s:'ok',t:'Final bill + payment receipts',p:'Present; both receipts sum to the final bill.'},
+    {s:'bad',t:'Signed claim form + photo ID',p:'Not attached. Your policy lists these as required — add them before submitting.',basis:'Policy — Documents to keep ready'}
+  ],
+  amounts:[
+    {s:'warn',t:'20% parental co-pay applies',amt:13600,dir:'bad',p:'For a parent’s claim you bear 20% of the admissible amount — about ₹13,600 out of pocket.',basis:'Policy — Parental co-pay 20%',conf:'Estimate — verify with insurer'},
+    {s:'ok',t:'Room rent within limit',p:'Bed charge is within the policy’s per-day room cap. No deduction expected.',basis:'Policy — Room rent limit',conf:'High confidence'}
+  ]
+};
+
+let claim=sampleClaim, claimSource='sample';
+function sClass(s){return s==='ok'?'ok':s==='warn'?'warn':'bad'}
+function sIcon(s){return s==='ok'?I.check:s==='warn'?I.warn:I.cross}
+function findingHTML(f){
+  const n=toNum(f.amt);
+  const amt=n!=null?`<span class="amt ${f.dir==='bad'?'bad':'ok'}">${f.dir==='bad'?'−':''}${rupee(n)}</span>`:'';
+  const conf=f.conf?`<span class="conf">${esc(f.conf)}</span>`:'';
+  const basis=f.basis?`<div class="basis">${I.book}<span>${esc(f.basis)}</span></div>`:'';
+  return `<div class="finding"><span class="fic ${sClass(f.s)}">${sIcon(f.s)}</span><div class="ft"><h4><span>${esc(f.t)}</span>${amt}</h4><p>${esc(f.p)}</p>${basis}${conf}</div></div>`;
+}
+function render(){
+  const docs=claim.documents||[], cov=claim.coverage||[], amt=claim.amounts||[];
+  const blockers=docs.filter(d=>d.s==='bad').length, flags=amt.filter(a=>a.s==='warn').length;
+  const estDeduction=amt.filter(a=>a.dir==='bad').reduce((s,a)=>s+(toNum(a.amt)||0),0);
+  const bt=toNum(claim.billTotal), estPayout=bt!=null?bt-estDeduction:null;
+  const scoreCls=blockers>0?'bad':flags>0?'warn':'ok';
+  const headline=blockers>0?`Almost ready — ${blockers} ${blockers===1?'thing':'things'} to fix first`:flags>0?'Looks submittable — mind the likely deductions':'Looks ready to submit';
+  const sub=blockers>0?'Coverage looks handled. Fix the items below and you’re clear to submit.':flags>0?'No blockers found. Be ready for the deductions flagged below.':'No blockers or obvious deductions found.';
+  const band=claimSource==='you'?`<div class="srcband you">✓ Your uploaded claim</div>`:`<div class="srcband sample">◆ Sample claim — demo data</div>`;
+  document.getElementById('summaryCard').innerHTML=`${band}
+    <div class="top"><div class="score ${scoreCls}"><div><b>${blockers>0?blockers:(flags>0?flags:'✓')}</b><small>${blockers>0?'to fix':(flags>0?'to note':'ready')}</small></div></div>
+    <div><h2>${esc(headline)}</h2><div class="sub">${esc(sub)}</div></div></div>
+    <div class="counts">
+      <span class="count"><span class="dotc d-bad"></span><span class="n">${blockers}</span> must fix</span>
+      <span class="count"><span class="dotc d-warn"></span><span class="n">${flags}</span> likely deductions</span>
+      <span class="count"><span class="dotc d-ok"></span>${cov.filter(c=>c.s==='ok').length?'coverage checked':'coverage'}</span>
+    </div>
+    <div class="claimhead">
+      <div><span class="muted">Patient</span><br><b>${esc((claim.insured||'—')+(claim.age?', '+claim.age:''))}</b></div>
+      <div><span class="muted">Insurer</span><br><b>${esc(claim.insurer||'—')}</b></div>
+      <div><span class="muted">Total bills</span><br><b class="tnum">${bt!=null?rupee(bt):'—'}</b></div>
+      <div><span class="muted">Est. payout</span><br><b class="tnum">${estPayout!=null?'~'+rupee(estPayout):'—'}</b></div>
+    </div>`;
+  const fixes=docs.filter(d=>d.s==='bad'), fixCard=document.getElementById('fixCard');
+  if(fixes.length){ fixCard.hidden=false; fixCard.innerHTML=`<div class="pad"><h3>${I.warn} Fix these before you submit</h3><ol>${fixes.map(f=>`<li><b>${esc(f.t.replace(/\s*—.*$/,''))}.</b> ${esc(f.p)}</li>`).join('')}</ol></div>`; }
+  else fixCard.hidden=true;
+  document.getElementById('sec-cov').innerHTML=cov.length?`<h3>Coverage</h3><div class="card">${cov.map(findingHTML).join('')}</div>`:'';
+  document.getElementById('sec-doc').innerHTML=docs.length?`<h3>Documents</h3><div class="card">${docs.map(findingHTML).join('')}</div>`:'';
+  document.getElementById('sec-amt').innerHTML=amt.length?`<h3>Amount &amp; deductions</h3><div class="card">${amt.map(findingHTML).join('')}</div>`:'';
+  document.getElementById('disclaimer').textContent='Estimates only. Final deductions and approval are decided by your insurer — ClaimReady helps you catch common problems before you submit, it doesn’t guarantee the outcome.';
+}
+
+const views={upload:'v-upload',analyzing:'v-analyzing',results:'v-results'};
+function show(v){ Object.values(views).forEach(id=>document.getElementById(id).classList.remove('on')); document.getElementById(views[v]).classList.add('on'); window.scrollTo(0,0); }
+
+let policyArr=[], docArr=[], cardArr=[];
+const analyzeBtn=document.getElementById('analyzeBtn');
+function refreshBtn(){ analyzeBtn.disabled=!(policyArr.length||docArr.length||cardArr.length); }
+function fillChips(id,names){ const el=document.getElementById(id); el.hidden=!names.length; el.innerHTML=names.map(n=>`<span class="chip"><span class="x">✓</span><span class="nm">${esc(n)}</span></span>`).join(''); }
+const policyInput=document.getElementById('policyInput'), docsInput=document.getElementById('docsInput'), cardInput=document.getElementById('cardInput');
+document.getElementById('dropPolicy').onclick=()=>policyInput.click();
+document.getElementById('dropDocs').onclick=()=>docsInput.click();
+document.getElementById('dropCard').onclick=()=>cardInput.click();
+policyInput.onchange=()=>{ if(policyInput.files.length){ policyArr=[...policyInput.files]; fillChips('policyFiles',policyArr.map(f=>f.name)); refreshBtn(); } };
+docsInput.onchange=()=>{ if(docsInput.files.length){ docArr=[...docsInput.files]; fillChips('docFiles',docArr.map(f=>f.name)); refreshBtn(); } };
+cardInput.onchange=()=>{ if(cardInput.files.length){ cardArr=[...cardInput.files]; fillChips('cardFiles',cardArr.map(f=>f.name)); refreshBtn(); } };
+document.getElementById('loadSample').onclick=()=>runAnalyzing(null);
+analyzeBtn.onclick=()=>{ if(policyArr.length||docArr.length||cardArr.length) runAnalyzing({policy:policyArr,docs:docArr,card:cardArr}); };
+
+function animateSteps(){
+  const steps=[...document.querySelectorAll('#steps .step')];
+  steps.forEach(s=>{s.classList.remove('done','active'); s.querySelector('.dot').innerHTML='';});
+  let i=0;
+  (function tick(){
+    if(i>0){ steps[i-1].classList.remove('active'); steps[i-1].classList.add('done'); steps[i-1].querySelector('.dot').innerHTML=I.check; }
+    if(i<steps.length){ steps[i].classList.add('active'); i++; setTimeout(tick,700); }
+  })();
+}
+function resetAnalyzing(){ document.getElementById('spin').style.display=''; document.getElementById('analyzeTitle').textContent='Reading your claim…'; document.getElementById('steps').hidden=false; document.getElementById('errbox').hidden=true; }
+function showError(msg,detail){ document.getElementById('spin').style.display='none'; document.getElementById('analyzeTitle').textContent='Couldn’t analyse this claim'; document.getElementById('steps').hidden=true; document.getElementById('errmsg').innerHTML=esc(msg)+(detail?('<br><span style="opacity:.7;font-size:12.5px">'+esc(detail)+'</span>'):''); document.getElementById('errbox').hidden=false; }
+
+function fileToPart(file,group){
+  return new Promise((resolve,reject)=>{
+    const rd=new FileReader();
+    rd.onload=()=>resolve({name:file.name, mimeType:file.type||'application/pdf', group, data:String(rd.result).split(',')[1]});
+    rd.onerror=()=>reject(new Error('Could not read '+file.name));
+    rd.readAsDataURL(file);
+  });
+}
+
+async function runAnalyzing(payload){
+  resetAnalyzing(); show('analyzing'); animateSteps();
+  const minWait=new Promise(r=>setTimeout(r,1200));
+  if(!payload){ await minWait; claim=sampleClaim; claimSource='sample'; render(); show('results'); return; }
+  try{
+    const all=[...payload.policy.map(f=>['policy document',f]), ...payload.docs.map(f=>['claim document',f]), ...payload.card.map(f=>['mediclaim card',f])];
+    const parts=await Promise.all(all.map(([g,f])=>fileToPart(f,g)));
+    const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({files:parts})});
+    const out=await r.json().catch(()=>null);
+    await minWait;
+    if(!r.ok){ showError('The analysis service returned an error.', (out&&(out.detail||out.error))||('HTTP '+r.status)); return; }
+    if(!out||(!out.coverage&&!out.documents&&!out.amounts)){ showError('The analysis returned no result.', 'Try again, or check your API key / server logs.'); return; }
+    out.coverage=out.coverage||[]; out.documents=out.documents||[]; out.amounts=out.amounts||[];
+    claim=out; claimSource='you'; render(); show('results');
+  }catch(e){ await minWait; showError('Couldn’t reach the analysis service.', (e&&e.message)||'network error'); }
+}
+
+document.getElementById('errSample').onclick=()=>runAnalyzing(null);
+document.getElementById('errBack').onclick=()=>show('upload');
+document.getElementById('home').onclick=()=>show('upload');
+document.getElementById('uploadBtn').onclick=()=>show('upload');
+document.getElementById('restart').onclick=()=>show('upload');
+show('upload');
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "claimready",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pre-submission health-insurance reimbursement claim checker (Gemini-powered).",
+  "engines": {
+    "node": "20.x"
+  }
+}
