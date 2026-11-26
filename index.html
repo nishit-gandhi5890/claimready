@@ -302,7 +302,8 @@ function render(){
   document.getElementById('sec-cov').innerHTML=cov.length?`<h3>Coverage</h3><div class="card">${cov.map(findingHTML).join('')}</div>`:'';
   document.getElementById('sec-doc').innerHTML=docs.length?`<h3>Documents</h3><div class="card">${docs.map(findingHTML).join('')}</div>`:'';
   document.getElementById('sec-amt').innerHTML=(amt.length||calcHTML)?`<h3>Amount &amp; deductions</h3>${calcHTML}${amt.length?`<div class="card"${calcHTML?' style="margin-top:14px"':''}>${amtOrdered.map(f=>findingHTML(Object.assign({},f,{amt:null}))).join('')}</div>`:''}`:'';
-  document.getElementById('disclaimer').textContent='Estimates only. Final deductions and approval are decided by your insurer — ClaimReady helps you catch common problems before you submit, it doesn’t guarantee the outcome.';
+  const modelNote=(claimSource==='you' && claim._model)?'  ·  Analysed by '+claim._model:'';
+  document.getElementById('disclaimer').textContent='Estimates only. Final deductions and approval are decided by your insurer — ClaimReady helps you catch common problems before you submit, it doesn’t guarantee the outcome.'+modelNote;
 }
 
 const views={upload:'v-upload',analyzing:'v-analyzing',results:'v-results'};
