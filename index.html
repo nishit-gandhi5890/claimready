@@ -216,6 +216,7 @@ const rupee=n=>'₹'+Number(n).toLocaleString('en-IN');
 const sampleClaim={
   insured:"Sample Patient", age:58, insurer:"Acme Health Insurance", plan:"Family Floater",
   billTotal:70326,
+  payout:{billTotal:70326, nonPayable:2000, otherDeductions:0, copayPercent:20, deductible:0},
   coverage:[
     {s:'ok',t:'Treatment is covered',p:'The procedure is a covered hospitalisation under this policy.',basis:'Policy — Covered Benefits',conf:'High confidence'},
     {s:'ok',t:'No waiting-period issue',p:'Pre-existing and first-year waiting periods are waived under this group policy.',basis:'Policy — Waiting Periods',conf:'High confidence'}
@@ -244,8 +245,32 @@ function findingHTML(f){
 function render(){
   const docs=claim.documents||[], cov=claim.coverage||[], amt=claim.amounts||[];
   const blockers=docs.filter(d=>d.s==='bad').length, flags=amt.filter(a=>a.s==='warn').length;
-  const estDeduction=amt.filter(a=>a.dir==='bad').reduce((s,a)=>s+(toNum(a.amt)||0),0);
-  const bt=toNum(claim.billTotal), estPayout=bt!=null?bt-estDeduction:null;
+  // ---- payout: AI returns the numbers, the app does the math (reliable) ----
+  const P = claim.payout || {};
+  const bt = toNum(P.billTotal)!=null ? toNum(P.billTotal) : toNum(claim.billTotal);
+  const nonPay = Math.max(0, toNum(P.nonPayable)||0);
+  const otherDed = Math.max(0, toNum(P.otherDeductions)||0);
+  const copayPct = (P.copayPercent!=null && toNum(P.copayPercent)!=null) ? toNum(P.copayPercent) : null;
+  const deductible = Math.max(0, toNum(P.deductible)||0);
+  let estPayout=null, calcHTML='';
+  if(bt!=null){
+    const admissible = bt - nonPay - otherDed;
+    const copayAmt = (copayPct!=null) ? Math.round(admissible*copayPct/100) : 0;
+    const payable = admissible - copayAmt - deductible;
+    estPayout = payable;
+    const hasDed = (nonPay>0 || otherDed>0);
+    let rows=`<div class="crow"><span>Total hospital bills</span><span class="cv">${rupee(bt)}</span></div>`;
+    if(nonPay>0) rows+=`<div class="crow neg"><span>Non-payable / non-medical items</span><span class="cv">− ${rupee(nonPay)}</span></div>`;
+    if(otherDed>0) rows+=`<div class="crow neg"><span>Other deductions (e.g. room rent over cap)</span><span class="cv">− ${rupee(otherDed)}</span></div>`;
+    if(hasDed) rows+=`<div class="crow sub"><span>Admissible amount</span><span class="cv">${rupee(admissible)}</span></div>`;
+    if(copayPct!=null) rows+=`<div class="crow neg"><span>Co-pay (${copayPct}% of admissible)</span><span class="cv">− ${rupee(copayAmt)}</span></div>`;
+    if(deductible>0) rows+=`<div class="crow neg"><span>Policy deductible</span><span class="cv">− ${rupee(deductible)}</span></div>`;
+    rows+=`<div class="crow total"><span>Estimated amount payable</span><span class="cv">${rupee(payable)}</span></div>`;
+    calcHTML=`<div class="calc card"><h4>What you can expect to get back</h4>${rows}<div class="cnote">Estimate only — your insurer decides the final amount.</div></div>`;
+  }
+  if(estPayout==null && bt!=null){ const d=amt.filter(a=>a.dir==='bad').reduce((s,a)=>s+(toNum(a.amt)||0),0); estPayout=bt-d; }
+  const isCopay=f=>/co-?pay/i.test((f.t||'')+' '+(f.p||''));
+  const amtOrdered=[...amt.filter(a=>!isCopay(a)), ...amt.filter(a=>isCopay(a))];
   const scoreCls=blockers>0?'bad':flags>0?'warn':'ok';
   const headline=blockers>0?`Almost ready — ${blockers} ${blockers===1?'thing':'things'} to fix first`:flags>0?'Looks submittable — mind the likely deductions':'Looks ready to submit';
   const sub=blockers>0?'Coverage looks handled. Fix the items below and you’re clear to submit.':flags>0?'No blockers found. Be ready for the deductions flagged below.':'No blockers or obvious deductions found.';
@@ -269,7 +294,7 @@ function render(){
   else fixCard.hidden=true;
   document.getElementById('sec-cov').innerHTML=cov.length?`<h3>Coverage</h3><div class="card">${cov.map(findingHTML).join('')}</div>`:'';
   document.getElementById('sec-doc').innerHTML=docs.length?`<h3>Documents</h3><div class="card">${docs.map(findingHTML).join('')}</div>`:'';
-  document.getElementById('sec-amt').innerHTML=amt.length?`<h3>Amount &amp; deductions</h3><div class="card">${amt.map(findingHTML).join('')}</div>`:'';
+  document.getElementById('sec-amt').innerHTML=(amt.length||calcHTML)?`<h3>Amount &amp; deductions</h3>${calcHTML}${amt.length?`<div class="card"${calcHTML?' style="margin-top:14px"':''}>${amtOrdered.map(f=>findingHTML(Object.assign({},f,{amt:null}))).join('')}</div>`:''}`:'';
   document.getElementById('disclaimer').textContent='Estimates only. Final deductions and approval are decided by your insurer — ClaimReady helps you catch common problems before you submit, it doesn’t guarantee the outcome.';
 }
 
@@ -310,7 +335,7 @@ function blobToB64(blob){
     rd.readAsDataURL(blob);
   });
 }
-async function shrinkToJpeg(blob, maxDim=1350, q=0.62){
+async function shrinkToJpeg(blob, maxDim=1600, q=0.66){
   const bmp=await createImageBitmap(blob);
   const scale=Math.min(1, maxDim/Math.max(bmp.width,bmp.height));
   const w=Math.max(1,Math.round(bmp.width*scale)), h=Math.max(1,Math.round(bmp.height*scale));
@@ -324,16 +349,19 @@ async function fileToParts(file,group){
   if(type==='application/pdf' || /\.pdf$/i.test(file.name)){
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-    const cap = (group==='policy document') ? 10 : 8;   // keep any one file from eating the whole budget
+    const isPolicy = (group==='policy document');
+    const cap = isPolicy ? 10 : 8;        // keep any one file from eating the whole budget
+    const maxDim = isPolicy ? 1250 : 1700; // claim docs (bills) get higher detail for line-items
+    const q = isPolicy ? 0.6 : 0.66;
     const pages=Math.min(pdf.numPages,cap);
     for(let pn=1;pn<=pages;pn++){
       const page=await pdf.getPage(pn);
       const base=page.getViewport({scale:1});
-      const scale=Math.min(2.0, 1350/Math.max(base.width,base.height));
+      const scale=Math.min(2.4, maxDim/Math.max(base.width,base.height));
       const vp=page.getViewport({scale});
       const c=document.createElement('canvas'); c.width=vp.width; c.height=vp.height;
       await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-      const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.62));
+      const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',q));
       if(blob) out.push({name:file.name+' (p'+pn+')', mimeType:'image/jpeg', group, data:await blobToB64(blob)});
     }
   } else if(type.startsWith('image/')){
