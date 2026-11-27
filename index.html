@@ -333,9 +333,10 @@ const policyInput=document.getElementById('policyInput'), docsInput=document.get
 document.getElementById('dropPolicy').onclick=()=>policyInput.click();
 document.getElementById('dropDocs').onclick=()=>docsInput.click();
 document.getElementById('dropCard').onclick=()=>cardInput.click();
-policyInput.onchange=()=>{ if(policyInput.files.length){ policyArr=[...policyInput.files]; renderChips(); refreshBtn(); } };
-docsInput.onchange=()=>{ if(docsInput.files.length){ docArr=[...docsInput.files]; renderChips(); refreshBtn(); } };
-cardInput.onchange=()=>{ if(cardInput.files.length){ cardArr=[...cardInput.files]; renderChips(); refreshBtn(); } };
+function addFiles(arr,list){ for(const f of list){ if(!arr.some(e=>e.name===f.name && e.size===f.size)) arr.push(f); } }
+policyInput.onchange=()=>{ addFiles(policyArr,[...policyInput.files]); policyInput.value=''; renderChips(); refreshBtn(); };
+docsInput.onchange=()=>{ addFiles(docArr,[...docsInput.files]); docsInput.value=''; renderChips(); refreshBtn(); };
+cardInput.onchange=()=>{ addFiles(cardArr,[...cardInput.files]); cardInput.value=''; renderChips(); refreshBtn(); };
 document.getElementById('loadSample').onclick=()=>runAnalyzing(null);
 analyzeBtn.onclick=()=>{ if(policyArr.length||docArr.length||cardArr.length) runAnalyzing({policy:policyArr,docs:docArr,card:cardArr}); };
 
