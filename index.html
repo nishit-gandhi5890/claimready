@@ -68,6 +68,8 @@ header{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:
 .chip{display:inline-flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:500; max-width:100%}
 .chip span.nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .chip .x{color:var(--ok); flex:none}
+.chip .rm{appearance:none; border:0; background:none; cursor:pointer; color:var(--muted); font-size:13px; line-height:1; padding:0 0 0 3px; margin:0; flex:none; border-radius:999px}
+.chip .rm:hover{color:var(--bad,#d14343)}
 .actions{margin-top:18px; display:grid; gap:10px}
 .samplelink{text-align:center; margin-top:4px}
 .samplelink button{background:none; border:0; color:var(--primary); font-weight:600; font-family:var(--body); font-size:14px; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
@@ -312,14 +314,28 @@ function show(v){ Object.values(views).forEach(id=>document.getElementById(id).c
 let policyArr=[], docArr=[], cardArr=[];
 const analyzeBtn=document.getElementById('analyzeBtn');
 function refreshBtn(){ analyzeBtn.disabled=!(policyArr.length||docArr.length||cardArr.length); }
-function fillChips(id,names){ const el=document.getElementById(id); el.hidden=!names.length; el.innerHTML=names.map(n=>`<span class="chip"><span class="x">✓</span><span class="nm">${esc(n)}</span></span>`).join(''); }
+const groups={policy:['policyFiles',()=>policyArr], docs:['docFiles',()=>docArr], card:['cardFiles',()=>cardArr]};
+function renderChips(){
+  for(const g in groups){ const [id,get]=groups[g]; const arr=get(); const el=document.getElementById(id);
+    el.hidden=!arr.length;
+    el.innerHTML=arr.map((f,i)=>`<span class="chip"><span class="x">✓</span><span class="nm">${esc(f.name)}</span><button type="button" class="rm" data-g="${g}" data-i="${i}" aria-label="Remove ${esc(f.name)}">✕</button></span>`).join('');
+  }
+}
+function removeFile(g,i){
+  if(g==='policy'){ policyArr.splice(i,1); policyInput.value=''; }
+  else if(g==='docs'){ docArr.splice(i,1); docsInput.value=''; }
+  else if(g==='card'){ cardArr.splice(i,1); cardInput.value=''; }
+  renderChips(); refreshBtn();
+}
+function resetUpload(){ policyArr=[]; docArr=[]; cardArr=[]; policyInput.value=''; docsInput.value=''; cardInput.value=''; renderChips(); refreshBtn(); }
+document.addEventListener('click',e=>{ const b=e.target.closest('.rm'); if(b){ removeFile(b.dataset.g, +b.dataset.i); } });
 const policyInput=document.getElementById('policyInput'), docsInput=document.getElementById('docsInput'), cardInput=document.getElementById('cardInput');
 document.getElementById('dropPolicy').onclick=()=>policyInput.click();
 document.getElementById('dropDocs').onclick=()=>docsInput.click();
 document.getElementById('dropCard').onclick=()=>cardInput.click();
-policyInput.onchange=()=>{ if(policyInput.files.length){ policyArr=[...policyInput.files]; fillChips('policyFiles',policyArr.map(f=>f.name)); refreshBtn(); } };
-docsInput.onchange=()=>{ if(docsInput.files.length){ docArr=[...docsInput.files]; fillChips('docFiles',docArr.map(f=>f.name)); refreshBtn(); } };
-cardInput.onchange=()=>{ if(cardInput.files.length){ cardArr=[...cardInput.files]; fillChips('cardFiles',cardArr.map(f=>f.name)); refreshBtn(); } };
+policyInput.onchange=()=>{ if(policyInput.files.length){ policyArr=[...policyInput.files]; renderChips(); refreshBtn(); } };
+docsInput.onchange=()=>{ if(docsInput.files.length){ docArr=[...docsInput.files]; renderChips(); refreshBtn(); } };
+cardInput.onchange=()=>{ if(cardInput.files.length){ cardArr=[...cardInput.files]; renderChips(); refreshBtn(); } };
 document.getElementById('loadSample').onclick=()=>runAnalyzing(null);
 analyzeBtn.onclick=()=>{ if(policyArr.length||docArr.length||cardArr.length) runAnalyzing({policy:policyArr,docs:docArr,card:cardArr}); };
 
@@ -422,8 +438,8 @@ async function runAnalyzing(payload){
 document.getElementById('errSample').onclick=()=>runAnalyzing(null);
 document.getElementById('errBack').onclick=()=>show('upload');
 document.getElementById('home').onclick=()=>show('upload');
-document.getElementById('uploadBtn').onclick=()=>show('upload');
-document.getElementById('restart').onclick=()=>show('upload');
+document.getElementById('uploadBtn').onclick=()=>{ resetUpload(); show('upload'); };
+document.getElementById('restart').onclick=()=>{ resetUpload(); show('upload'); };
 show('upload');
 </script>
 </body>
