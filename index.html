@@ -48,8 +48,11 @@ header{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:
 .bar .spacer{flex:1}
 .ghost{font-family:var(--body); font-weight:600; font-size:13.5px; color:var(--primary); background:var(--primary-soft); border:0; padding:8px 12px; border-radius:9px; cursor:pointer}
 .btn{font-family:var(--display); font-weight:700; font-size:15px; border:0; border-radius:11px; padding:13px 18px; cursor:pointer; background:var(--primary); color:var(--primary-ink); width:100%}
-.btn-clear{font-family:var(--body); font-weight:600; font-size:13.5px; border:1px solid var(--line); border-radius:11px; padding:11px 18px; cursor:pointer; background:none; color:var(--muted); width:100%}
-.btn-clear:hover{color:var(--bad,#d14343); border-color:var(--bad,#d14343)}
+.btn-clear{justify-self:center; width:auto; font-family:var(--body); font-weight:600; font-size:13px; border:1px solid var(--line); border-radius:9px; padding:9px 16px; cursor:pointer; background:var(--surface-2); color:var(--ink); display:inline-flex; align-items:center; gap:6px}
+.btn-clear::before{content:"✕"; font-size:12px; color:var(--muted)}
+.btn-clear:hover{color:var(--bad); border-color:var(--bad)}
+.btn-clear:hover::before{color:var(--bad)}
+.btn-clear[hidden]{display:none}
 .btn:disabled{opacity:.5; cursor:not-allowed}
 .btn.sec{background:var(--surface); color:var(--ink); border:1px solid var(--line)}
 .btn:focus-visible,.ghost:focus-visible,.logo:focus-visible,.drop:focus-visible{outline:2px solid var(--primary); outline-offset:2px}
@@ -173,7 +176,7 @@ header{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:
     <input type="file" id="policyInput" accept="application/pdf,image/*" multiple hidden>
     <input type="file" id="docsInput" accept="application/pdf,image/*" multiple hidden>
     <input type="file" id="cardInput" accept="application/pdf,image/*" multiple hidden>
-    <div class="actions"><button class="btn" id="analyzeBtn" disabled>Analyze my claim</button><button class="btn-clear" id="clearBtn" hidden>Clear all documents</button></div>
+    <div class="actions"><button class="btn-clear" id="clearBtn" hidden>Clear all documents</button><button class="btn" id="analyzeBtn" disabled>Analyze my claim</button></div>
     <div class="samplelink"><button id="loadSample">Don’t have files handy? See a sample claim →</button></div>
     <p class="note">PDFs and photos both work — read at full resolution by Gemini. Upload every bill and receipt for the most accurate result.</p>
   </section>
