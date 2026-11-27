@@ -154,14 +154,12 @@ header{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:
   <div class="bar">
     <button class="logo" id="home" aria-label="ClaimReady home"><span class="mark">✓</span>ClaimReady</button>
     <span class="spacer"></span>
-    <button class="ghost" id="uploadBtn">Check a claim</button>
   </div>
 </header>
 
 <div class="wrap">
   <section class="view" id="v-upload">
     <div class="hero">
-      <span class="proto">Beta</span>
       <h1>Check your claim before you submit it.</h1>
       <p>Upload your policy and hospital documents. We check what’s covered, what’s missing, and what the insurer is likely to cut — so you fix it before a rejection comes back.</p>
     </div>
@@ -178,7 +176,7 @@ header{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:
     <input type="file" id="cardInput" accept="application/pdf,image/*" multiple hidden>
     <div class="actions"><button class="btn-clear" id="clearBtn" hidden>Clear all documents</button><button class="btn" id="analyzeBtn" disabled>Analyze my claim</button></div>
     <div class="samplelink"><button id="loadSample">Don’t have files handy? See a sample claim →</button></div>
-    <p class="note">PDFs and photos both work — read at full resolution by Gemini. Upload every bill and receipt for the most accurate result.</p>
+    <p class="note">PDFs and photos are both accepted. Upload your policy and all hospital bills, receipts and reports for the most accurate result.</p>
   </section>
 
   <section class="view" id="v-analyzing">
@@ -314,7 +312,7 @@ function render(){
 }
 
 const views={upload:'v-upload',analyzing:'v-analyzing',results:'v-results'};
-function show(v){ Object.values(views).forEach(id=>document.getElementById(id).classList.remove('on')); document.getElementById(views[v]).classList.add('on'); document.getElementById('uploadBtn').style.display=(v==='upload')?'none':''; window.scrollTo(0,0); }
+function show(v){ Object.values(views).forEach(id=>document.getElementById(id).classList.remove('on')); document.getElementById(views[v]).classList.add('on'); window.scrollTo(0,0); }
 
 let policyArr=[], docArr=[], cardArr=[];
 const analyzeBtn=document.getElementById('analyzeBtn');
@@ -445,7 +443,6 @@ async function runAnalyzing(payload){
 document.getElementById('errSample').onclick=()=>runAnalyzing(null);
 document.getElementById('errBack').onclick=()=>show('upload');
 document.getElementById('home').onclick=()=>show('upload');
-document.getElementById('uploadBtn').onclick=()=>{ resetUpload(); show('upload'); };
 document.getElementById('restart').onclick=()=>{ resetUpload(); show('upload'); };
 show('upload');
 </script>
