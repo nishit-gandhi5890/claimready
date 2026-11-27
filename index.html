@@ -358,9 +358,9 @@ async function fileToParts(file,group){
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
     const isPolicy = (group==='policy document');
-    const cap = isPolicy ? 10 : 8;        // keep any one file from eating the whole budget
-    const maxDim = isPolicy ? 1250 : 1850; // claim docs (bills) get higher detail for line-items
-    const q = isPolicy ? 0.6 : 0.66;
+    const cap = isPolicy ? 8 : 10;        // claim docs get more page headroom (bills+reports); policy trimmed
+    const maxDim = isPolicy ? 1150 : 1850; // claim docs (bills) get higher detail for line-items
+    const q = isPolicy ? 0.58 : 0.66;
     const pages=Math.min(pdf.numPages,cap);
     for(let pn=1;pn<=pages;pn++){
       const page=await pdf.getPage(pn);
@@ -386,20 +386,28 @@ async function runAnalyzing(payload){
   const minWait=new Promise(r=>setTimeout(r,1200));
   if(!payload){ await minWait; claim=sampleClaim; claimSource='sample'; render(); show('results'); return; }
   try{
-    const all=[...payload.policy.map(f=>['policy document',f]), ...payload.docs.map(f=>['claim document',f]), ...payload.card.map(f=>['mediclaim card',f])];
-    const perFile=[];
-    for(const [g,f] of all){ perFile.push(await fileToParts(f,g)); }
-    // round-robin: every uploaded document contributes its first page before any file adds extra pages
-    let parts=[]; let total=0; const MAXB=4000000;
-    const maxLen=perFile.reduce((m,a)=>Math.max(m,a.length),0);
-    for(let idx=0; idx<maxLen; idx++){
-      for(const arr of perFile){
-        if(idx>=arr.length) continue;
-        const pt=arr[idx]; const sz=pt.data?pt.data.length:0;
-        if(total+sz>MAXB){ idx=maxLen; break; }
-        total+=sz; parts.push(pt);
+    // Claim documents (bills, imaging/lab reports, discharge) are what the document & amount
+    // checks depend on — pack them FIRST and in full, so no bill page or report ever gets
+    // dropped by the size budget. Policy pages (coverage/clause lookup) fill the remainder.
+    const claimSrc=[...payload.docs.map(f=>['claim document',f]), ...payload.card.map(f=>['mediclaim card',f])];
+    const policySrc=payload.policy.map(f=>['policy document',f]);
+    const claimFiles=[]; for(const [g,f] of claimSrc){ claimFiles.push(await fileToParts(f,g)); }
+    const policyFiles=[]; for(const [g,f] of policySrc){ policyFiles.push(await fileToParts(f,g)); }
+    let parts=[]; let total=0; const MAXB=4200000;
+    // round-robin within a group: every file contributes its first page before any file adds extra pages
+    function addGroup(files){
+      const maxLen=files.reduce((m,a)=>Math.max(m,a.length),0);
+      for(let idx=0; idx<maxLen; idx++){
+        for(const arr of files){
+          if(idx>=arr.length) continue;
+          const pt=arr[idx]; const sz=pt.data?pt.data.length:0;
+          if(total+sz>MAXB){ return; }
+          total+=sz; parts.push(pt);
+        }
       }
     }
+    addGroup(claimFiles);   // bills + reports + discharge first — never dropped
+    addGroup(policyFiles);  // policy fills whatever budget remains
     if(!parts.length){ await minWait; showError('Couldn’t read these files.', 'Try clearer PDFs or photos.'); return; }
     const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({files:parts})});
     const out=await r.json().catch(()=>null);
